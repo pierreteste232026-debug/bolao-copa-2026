@@ -1,0 +1,14 @@
+{
+  "name": "bolao-copa-2026",
+  "version": "1.0.0",
+  "description": "Bolao da Copa 2026 com Netlify Functions e Turso.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js && node --check netlify/functions/api.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.3"
+  }
+}
