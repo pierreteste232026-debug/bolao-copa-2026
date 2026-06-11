@@ -1153,6 +1153,40 @@ th {
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
+.sponsor-badge {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 15;
+  width: 156px;
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(8, 10, 14, 0.84);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px);
+}
+
+.sponsor-badge span {
+  color: var(--br-yellow);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sponsor-badge img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  object-fit: contain;
+  border-radius: 7px;
+  background: #fff;
+}
+
 .toast.is-visible {
   transform: translateY(0);
   opacity: 1;
@@ -1228,6 +1262,19 @@ th {
   .brand-flag {
     width: 38px;
     height: 28px;
+  }
+
+  .sponsor-badge {
+    left: auto;
+    right: 10px;
+    top: 10px;
+    bottom: auto;
+    width: 74px;
+    padding: 5px;
+  }
+
+  .sponsor-badge span {
+    display: none;
   }
 
   .shell {
