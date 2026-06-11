@@ -208,7 +208,17 @@ async function seedDatabase() {
       `INSERT INTO teams (
         espn_id, abbreviation, name, source_name, logo, color, alternate_color,
         group_name, group_position, is_placeholder
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(espn_id) DO UPDATE SET
+        abbreviation = excluded.abbreviation,
+        name = excluded.name,
+        source_name = excluded.source_name,
+        logo = excluded.logo,
+        color = excluded.color,
+        alternate_color = excluded.alternate_color,
+        group_name = excluded.group_name,
+        group_position = excluded.group_position,
+        is_placeholder = excluded.is_placeholder`,
       [
         String(team.espnId),
         team.abbreviation || 'TBD',
@@ -232,7 +242,21 @@ async function seedDatabase() {
         espn_id, match_number, date_utc, stage_slug, stage_name, round_name,
         group_name, venue, status, completed, home_team_id, away_team_id,
         home_score, away_score
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(espn_id) DO UPDATE SET
+        match_number = excluded.match_number,
+        date_utc = excluded.date_utc,
+        stage_slug = excluded.stage_slug,
+        stage_name = excluded.stage_name,
+        round_name = excluded.round_name,
+        group_name = excluded.group_name,
+        venue = excluded.venue,
+        status = excluded.status,
+        completed = excluded.completed,
+        home_team_id = excluded.home_team_id,
+        away_team_id = excluded.away_team_id,
+        home_score = excluded.home_score,
+        away_score = excluded.away_score`,
       [
         String(match.espnId),
         match.matchNumber,
