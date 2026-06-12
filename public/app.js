@@ -15,6 +15,7 @@ const state = {
 const tabLabels = {
   rodadas: 'Rodadas',
   tabela: 'Tabela',
+  palpites: 'Palpites',
   ranking: 'Ranking'
 };
 
@@ -254,6 +255,7 @@ function renderTopbar() {
 function workspaceSubtitle() {
   if (state.activeTab === 'rodadas') return `${state.activeRound} - ${matchesForRound(state.activeRound).length} jogos`;
   if (state.activeTab === 'tabela') return 'Classificação calculada pelos resultados oficiais salvos.';
+  if (state.activeTab === 'palpites') return 'Veja os palpites liberados por jogo e por rodada.';
   if (state.activeTab === 'ranking') return 'Ranking de placares exatos: 1 ponto por cravada.';
   return 'Atualização local de placares, com sincronização automática pela ESPN.';
 }
@@ -346,6 +348,7 @@ function renderOrganizerContent() {
         <strong>Sincronização automática ligada</strong>
         <span>O servidor verifica os placares da ESPN a cada 10 minutos enquanto estiver aberto. O botão abaixo força uma nova consulta agora.</span>
       </div>
+      ${renderUsersAdmin()}
       <div class="toolbar">
         <div class="tabs">
           ${state.data.rounds.map(round => `
@@ -361,6 +364,37 @@ function renderOrganizerContent() {
       </div>
       ${renderResultsAdmin()}
     </div>
+  `;
+}
+
+function renderUsersAdmin() {
+  const players = state.data.leaderboard || [];
+  return `
+    <section class="admin-users">
+      <div class="panel-title">
+        <h2>Participantes</h2>
+        <span>${players.length} jogador${players.length === 1 ? '' : 'es'}</span>
+      </div>
+      ${players.length ? `
+        <div class="admin-users-list">
+          ${players.map(player => `
+            <div class="admin-user-row" data-admin-user-row data-user-id="${player.id}">
+              <div class="admin-user-info">
+                <strong>#${player.position} ${escapeHtml(player.name)}</strong>
+                <span>${escapeHtml(player.email || '')} - ${player.points} ponto${player.points === 1 ? '' : 's'} - ${player.predictions} palpite${player.predictions === 1 ? '' : 's'}</span>
+              </div>
+              <label class="field admin-user-name">
+                <span>Nome exibido</span>
+                <input data-user-name type="text" required minlength="2" maxlength="80" value="${escapeHtml(player.name)}" aria-label="Nome de ${escapeHtml(player.name)}">
+              </label>
+            </div>
+          `).join('')}
+        </div>
+        <div class="save-strip">
+          <button class="primary-button" data-action="save-users">Salvar nomes dos participantes</button>
+        </div>
+      ` : renderEmpty('Nenhum participante', 'Os jogadores aparecem aqui depois do cadastro.')}
+    </section>
   `;
 }
 
@@ -403,6 +437,7 @@ function renderRoundPanel() {
 
 function renderWorkspace() {
   if (state.activeTab === 'tabela') return renderStandings();
+  if (state.activeTab === 'palpites') return renderPublicPredictions();
   if (state.activeTab === 'ranking') return renderRanking();
   return renderRoundMatches();
 }
@@ -561,17 +596,70 @@ function renderRanking() {
         </thead>
         <tbody>
           ${players.map(player => `
-            <tr>
-              <td><span class="rank-badge">${player.position}</span></td>
-              <td>${escapeHtml(player.name)}</td>
-              <td><strong>${player.points}</strong></td>
-              <td>${player.exact}</td>
-              <td>${player.predictions}</td>
+            <tr class="ranking-row">
+              <td data-label="Posição"><span class="rank-badge">${player.position}</span></td>
+              <td data-label="Participante" class="ranking-name">${escapeHtml(player.name)}</td>
+              <td data-label="Cravadas"><strong>${player.points}</strong></td>
+              <td data-label="Pontos">${player.exact}</td>
+              <td data-label="Palpites">${player.predictions}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </section>
+  `;
+}
+
+function publicPredictionsFor(matchId) {
+  return (state.data.publicPredictions || [])
+    .filter(prediction => prediction.matchId === matchId)
+    .sort((a, b) => Number(b.isMine) - Number(a.isMine) || a.userName.localeCompare(b.userName));
+}
+
+function renderPublicPredictions() {
+  const matches = matchesForRound(state.activeRound);
+  if (!matches.length) return renderEmpty('Rodada vazia', 'Nenhum jogo encontrado.');
+
+  return `
+    <div class="public-predictions-grid">
+      ${matches.map(match => {
+        const locked = isPredictionLocked(match);
+        const predictions = publicPredictionsFor(match.id);
+        return `
+          <article class="public-prediction-card ${locked ? 'is-opened' : ''}">
+            <div class="match-meta">
+              <span class="badge">Jogo ${match.matchNumber}</span>
+              ${match.groupName ? `<span class="badge">${escapeHtml(groupLabel(match.groupName))}</span>` : ''}
+              <span class="badge">${escapeHtml(formatDate(match.dateUtc))}</span>
+              ${locked ? '<span class="badge open-badge">Palpites liberados</span>' : '<span class="badge lock-badge">Aguardando início</span>'}
+            </div>
+            <div class="prediction-match-line">
+              <div class="match-mini">
+                ${teamFlag(match.home)}
+                <span>${escapeHtml(match.home.name)}</span>
+              </div>
+              <strong>x</strong>
+              <div class="match-mini">
+                ${teamFlag(match.away)}
+                <span>${escapeHtml(match.away.name)}</span>
+              </div>
+            </div>
+            <div class="public-prediction-list">
+              ${predictions.length ? predictions.map(prediction => `
+                <div class="public-prediction-row ${prediction.isMine ? 'is-mine' : ''}">
+                  <span>${escapeHtml(prediction.userName)}${prediction.isMine ? ' (você)' : ''}</span>
+                  <strong>${prediction.homeScore} x ${prediction.awayScore}</strong>
+                </div>
+              `).join('') : `
+                <div class="prediction-privacy-note">
+                  ${locked ? 'Nenhum palpite salvo para este jogo.' : 'Os palpites dos outros jogadores aparecem quando o jogo começar.'}
+                </div>
+              `}
+            </div>
+          </article>
+        `;
+      }).join('')}
+    </div>
   `;
 }
 
@@ -650,6 +738,19 @@ function collectResults() {
   return results;
 }
 
+function collectUsers() {
+  const users = [];
+  document.querySelectorAll('[data-admin-user-row]').forEach(row => {
+    const name = row.querySelector('[data-user-name]').value.trim();
+    if (name.length < 2) throw new Error('Cada nome precisa ter pelo menos 2 caracteres.');
+    users.push({
+      id: Number(row.dataset.userId),
+      name
+    });
+  });
+  return users;
+}
+
 async function savePredictions() {
   if (!state.data.user) {
     showToast('Entre ou cadastre-se para salvar palpites.', true);
@@ -666,6 +767,27 @@ async function savePredictions() {
     setData(response.data);
     render();
     showToast(`${response.saved} palpites salvos.`);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function saveUsers() {
+  try {
+    const adminKey = visibleAdminKey();
+    if (!state.isOrganizer || !adminKey) throw new Error('Digite a chave do organizador para editar participantes.');
+    const users = collectUsers();
+    if (!users.length) {
+      showToast('Nenhum participante para atualizar.', true);
+      return;
+    }
+    setBusy(true);
+    const response = await api('/api/admin/users', { method: 'POST', body: { adminKey, users } });
+    setData(response.data);
+    render();
+    showToast(`${response.saved} nome${response.saved === 1 ? '' : 's'} atualizado${response.saved === 1 ? '' : 's'}.`);
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -815,6 +937,7 @@ document.addEventListener('click', event => {
 
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'save-predictions') savePredictions();
+  if (action === 'save-users') saveUsers();
   if (action === 'save-results') saveResults();
   if (action === 'sync-results') syncResults();
   if (action === 'logout') logout();
