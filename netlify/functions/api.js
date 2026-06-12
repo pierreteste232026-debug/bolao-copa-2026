@@ -446,6 +446,31 @@ async function getPredictions(userId) {
   }]));
 }
 
+async function getPublicPredictions(userId) {
+  if (!userId) return [];
+  const rows = await all(
+    `SELECT
+      p.match_id AS matchId, p.user_id AS userId, u.name AS userName,
+      p.home_score AS homeScore, p.away_score AS awayScore,
+      m.date_utc AS dateUtc, m.completed
+    FROM predictions p
+    JOIN users u ON u.id = p.user_id
+    JOIN matches m ON m.id = p.match_id
+    ORDER BY m.match_number, u.name`
+  );
+
+  return rows
+    .filter(row => Number(row.userId) === Number(userId) || isPredictionLocked({ date_utc: row.dateUtc, completed: row.completed }))
+    .map(row => ({
+      matchId: Number(row.matchId),
+      userId: Number(row.userId),
+      userName: row.userName,
+      homeScore: Number(row.homeScore),
+      awayScore: Number(row.awayScore),
+      isMine: Number(row.userId) === Number(userId)
+    }));
+}
+
 async function getStandings() {
   const teams = await all(
     `SELECT id, name, abbreviation, logo, color, group_name AS groupName, group_position AS groupPosition
@@ -588,6 +613,7 @@ async function bootstrap(event, options = {}) {
     rounds: await getRounds(),
     matches: await getMatches(),
     predictions: await getPredictions(user?.id),
+    publicPredictions: await getPublicPredictions(user?.id),
     standings: await getStandings(),
     leaderboard: await getLeaderboard(),
     stats: await getStats()
@@ -734,6 +760,24 @@ exports.handler = async event => {
     if (method === 'POST' && pathname === '/admin/verify') {
       requireAdmin(body, event);
       return json(200, { ok: true });
+    }
+
+    if (method === 'POST' && pathname === '/admin/users') {
+      requireAdmin(body, event);
+      const users = Array.isArray(body.users) ? body.users : [];
+      let saved = 0;
+
+      for (const item of users) {
+        const id = Number(item.id);
+        const name = String(item.name || '').trim();
+        if (!Number.isInteger(id) || id <= 0 || name.length < 2 || name.length > 80) {
+          return json(400, { error: 'Participante invÃ¡lido.' });
+        }
+        const result = await execute('UPDATE users SET name = ? WHERE id = ?', [name, id]);
+        saved += Number(result.rowsAffected || 0);
+      }
+
+      return json(200, { ok: true, saved, data: await bootstrap(event, { skipAutoSync: true }) });
     }
 
     if (method === 'POST' && pathname === '/register') {
