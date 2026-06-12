@@ -584,28 +584,15 @@ function renderRanking() {
   if (!players.length) return renderEmpty('Ranking vazio', 'Os participantes aparecem aqui depois do cadastro.');
   return `
     <section class="ranking-panel">
-      <table>
-        <thead>
-          <tr>
-            <th>Pos</th>
-            <th>Participante</th>
-            <th>Cravadas</th>
-            <th>Pontos</th>
-            <th>Palpites</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${players.map(player => `
-            <tr class="ranking-row">
-              <td data-label="Posição"><span class="rank-badge">${player.position}</span></td>
-              <td data-label="Participante" class="ranking-name">${escapeHtml(player.name)}</td>
-              <td data-label="Cravadas"><strong>${player.points}</strong></td>
-              <td data-label="Pontos">${player.exact}</td>
-              <td data-label="Palpites">${player.predictions}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="ranking-list">
+        ${players.map(player => `
+          <div class="ranking-row">
+            <span class="rank-badge">${player.position}</span>
+            <span class="ranking-name">${escapeHtml(player.name)}</span>
+            <strong class="ranking-points">${player.points}</strong>
+          </div>
+        `).join('')}
+      </div>
     </section>
   `;
 }
